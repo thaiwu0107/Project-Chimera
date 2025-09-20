@@ -1,0 +1,69 @@
+# Project Chimera - S1 Exchange Connectors Environment Configuration
+# 複製此文件為 env.yaml 並根據需要修改
+
+# Redis 連接設定
+redis:
+  addr: "localhost:6379"
+  password: ""
+  poolSize: 10
+  db: 0
+  timeout: "5s"
+  read_timeout: "3s"
+  write_timeout: "3s"
+
+# ArangoDB 連接設定
+arangodb:
+  addr: "http://localhost:8529"
+  database: "_system"
+  username: "root"
+  password: ""
+  timeout: "30s"
+  max_connections: 10
+
+# Exchange API 設定
+exchange:
+  binance:
+    api_key: ""
+    secret_key: ""
+    base_url: "https://api.binance.com"
+    futures_url: "https://fapi.binance.com"
+    testnet: false
+    timeout: "10s"
+    rate_limit: 1200  # requests per minute
+
+# WebSocket 設定
+websocket:
+  reconnect_interval: "5s"
+  ping_interval: "30s"
+  pong_timeout: "10s"
+  buffer_size: 1024
+
+# 服務設定
+service:
+  name: "s1-exchange"
+  version: "1.0.0"
+  port: 8081
+  host: "0.0.0.0"
+
+# 日誌設定
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  service_code: "s1-exchange"
+
+# APM 設定
+apm:
+  service_name: "s1-exchange"
+  service_environment: "production"
+  server_urls: ["http://apm-server:8200"]
+  enabled: true
+
+# 健康檢查設定
+health:
+  check_interval: "30s"
+  timeout: "5s"
+  dependencies:
+    - "redis"
+    - "arangodb"
+    - "binance_api"

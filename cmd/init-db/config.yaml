@@ -1,0 +1,5 @@
+arangodb:
+  addr: "http://localhost:8529"
+  database: "_system"
+  username: "root"
+  password: ""

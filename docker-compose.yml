@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # Redis Cluster
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+  # ArangoDB
+  arangodb:
+    image: arangodb:3.11
+    ports:
+      - "8529:8529"
+    environment:
+      ARANGO_ROOT_PASSWORD: ""
+    volumes:
+      - arangodb_data:/var/lib/arangodb3
+
+  # S1 Exchange Connectors
+  s1-exchange:
+    build: ./services/s1-exchange
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S2 Feature Generator
+  s2-feature:
+    build: ./services/s2-feature
+    ports:
+      - "8082:8082"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S3 Strategy Engine
+  s3-strategy:
+    build: ./services/s3-strategy
+    ports:
+      - "8083:8083"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S4 Order Router
+  s4-router:
+    build: ./services/s4-router
+    ports:
+      - "8084:8084"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S5 Reconciler
+  s5-reconciler:
+    build: ./services/s5-reconciler
+    ports:
+      - "8085:8085"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S6 Position Manager
+  s6-position:
+    build: ./services/s6-position
+    ports:
+      - "8086:8086"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S7 Label Backfill
+  s7-label:
+    build: ./services/s7-label
+    ports:
+      - "8087:8087"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S8 Autopsy Generator
+  s8-autopsy:
+    build: ./services/s8-autopsy
+    ports:
+      - "8088:8088"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S9 Hypothesis Orchestrator
+  s9-hypothesis:
+    build: ./services/s9-hypothesis
+    ports:
+      - "8089:8089"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S10 Config Service
+  s10-config:
+    build: ./services/s10-config
+    ports:
+      - "8090:8090"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S11 Metrics & Health
+  s11-metrics:
+    build: ./services/s11-metrics
+    ports:
+      - "8091:8091"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+  # S12 Web UI / API GW
+  s12-ui:
+    build: ./services/s12-ui
+    ports:
+      - "8092:8092"
+    environment:
+      - REDIS_URL=redis:6379
+      - ARANGODB_URL=http://arangodb:8529
+    depends_on:
+      - redis
+      - arangodb
+
+volumes:
+  redis_data:
+  arangodb_data:

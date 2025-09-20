@@ -1,0 +1,647 @@
+openapi: 3.1.0
+info:
+  title: Project Chimera - S12 Gateway API
+  version: 0.3.0
+servers:
+  - url: https://chimera.example.com/api
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      summary: Health check
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+
+  /orders:
+    post:
+      summary: Place order (FUT/SPOT; OCO/SL supported via intent)
+      operationId: ordersCreate
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema: { type: string, maxLength: 128 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrderCmdRequest" }
+      responses:
+        "200":
+          description: Order result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrderResult" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+
+  /cancel:
+    post:
+      summary: Cancel order (optionally cascade OCO)
+      operationId: ordersCancel
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelRequest" }
+      responses:
+        "200":
+          description: Cancel result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CancelResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /reconcile:
+    post:
+      summary: Reconcile orders/positions with exchange
+      operationId: reconcile
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReconcileRequest" }
+      responses:
+        "200":
+          description: Reconcile summary
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ReconcileResponse" }
+
+  /features/recompute:
+    post:
+      summary: Recompute features
+      operationId: featuresRecompute
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FeatureRecomputeRequest" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FeatureRecomputeResponse" }
+
+  /decide:
+    post:
+      summary: Make a decision (no order if dry_run=true)
+      operationId: decide
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecideRequest" }
+      responses:
+        "200":
+          description: Decision and optional intent
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DecideResponse" }
+
+  /positions/manage:
+    post:
+      summary: Manage positions (trail SL / partial TP / add if ok)
+      operationId: positionsManage
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PositionsManageRequest" }
+      responses:
+        "200":
+          description: Manage result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PositionsManageResponse" }
+
+  /labels/backfill:
+    post:
+      summary: Backfill labels (12/24/36h)
+      operationId: labelsBackfill
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LabelsBackfillRequest" }
+      responses:
+        "200":
+          description: Backfilled
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LabelsBackfillResponse" }
+
+  /autopsy/{trade_id}:
+    post:
+      summary: Generate autopsy report
+      operationId: autopsyGenerate
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: trade_id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AutopsyRequest" }
+      responses:
+        "200":
+          description: Report meta
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AutopsyResponse" }
+
+  /experiments/run:
+    post:
+      summary: Run backtest/experiment
+      operationId: experimentsRun
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ExperimentsRunRequest" }
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ExperimentsRunResponse" }
+
+  /bundles:
+    post:
+      summary: Upsert config bundle (DRAFT)
+      operationId: bundlesUpsert
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BundleUpsertRequest" }
+      responses:
+        "200":
+          description: Upserted bundle
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BundleUpsertResponse" }
+
+  /simulate:
+    post:
+      summary: Simulator + Sensitivity for bundle
+      operationId: simulate
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimulateRequest" }
+      responses:
+        "200":
+          description: Simulation result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SimulateResponse" }
+
+  /promote:
+    post:
+      summary: Promote/Canary/Ramp/Rollback
+      operationId: promote
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: header
+          name: X-Idempotency-Key
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PromoteRequest" }
+      responses:
+        "200":
+          description: Promotion result
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PromoteResponse" }
+
+  /metrics:
+    get:
+      summary: Query metrics series
+      operationId: metricsQuery
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: metric
+          schema: { type: string }
+          required: true
+        - in: query
+          name: symbol
+          schema: { type: string }
+        - in: query
+          name: from_ts
+          schema: { type: integer }
+        - in: query
+          name: to_ts
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Series
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MetricsResponse" }
+
+  /alerts:
+    get:
+      summary: Query alerts
+      operationId: alertsQuery
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: severity
+          schema: { type: string, enum: [INFO, WARN, ERROR, FATAL] }
+        - in: query
+          name: source
+          schema: { type: string }
+        - in: query
+          name: from_ts
+          schema: { type: integer }
+        - in: query
+          name: limit
+          schema: { type: integer, maximum: 1000 }
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AlertsResponse" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    BadRequest: { description: Bad request }
+    Unprocessable: { description: Unprocessable entity }
+    NotFound: { description: Not found }
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status: { type: string, enum: [UP, DEGRADED, DOWN] }
+        deps:
+          type: object
+          additionalProperties: { type: string }
+      required: [status]
+
+    OrderCmdRequest:
+      type: object
+      properties:
+        intent: { $ref: "#/components/schemas/Intent" }
+        tp:
+          type: object
+          nullable: true
+          properties:
+            price: { type: number }
+            qty_pct: { type: number, minimum: 0, maximum: 1 }
+        sl:
+          type: object
+          nullable: true
+          properties:
+            stop_price: { type: number }
+            reduce_only: { type: boolean, default: true }
+      required: [intent]
+
+    Intent:
+      type: object
+      properties:
+        intent_id: { type: string }
+        market: { type: string, enum: [FUT, SPOT] }
+        symbol: { type: string }
+        side: { type: string, enum: [BUY, SELL] }
+        qty: { type: number, exclusiveMinimum: 0 }
+        type: { type: string, enum: [MARKET, LIMIT, STOP_MARKET] }
+        price: { type: number }
+        stop_price: { type: number }
+        working_type: { type: string, enum: [MARK_PRICE, CONTRACT_PRICE], default: MARK_PRICE }
+        reduce_only: { type: boolean, default: false }
+        leverage: { type: integer, minimum: 1, maximum: 125 }
+        isolated: { type: boolean, default: true }
+        exec_policy: { type: string, enum: [MakerThenTaker, Market, OCO, LimitOnly] }
+        post_only_wait_ms: { type: integer, minimum: 0, maximum: 10000, default: 3000 }
+        twap:
+          type: object
+          properties:
+            enabled: { type: boolean, default: false }
+            slices: { type: integer, minimum: 1, maximum: 10, default: 3 }
+            interval_ms: { type: integer, minimum: 200, maximum: 5000, default: 800 }
+        oco:
+          type: object
+          properties:
+            tp_price: { type: number }
+            sl_price: { type: number }
+            leg_time_in_force: { type: string, enum: [GTC, IOC], default: GTC }
+        client_tags:
+          type: array
+          items: { type: string, maxLength: 32 }
+          maxItems: 10
+      required: [intent_id, market, symbol, side, qty]
+
+    OrderResult:
+      type: object
+      properties:
+        status: { type: string, enum: [NEW, FILLED, PARTIALLY_FILLED, ACCEPTED, CANCELED, REJECTED] }
+        order_id: { type: string }
+        avg_price: { type: number }
+        filled_qty: { type: number }
+        slippage_bps: { type: number }
+        fills:
+          type: array
+          items:
+            type: object
+            properties:
+              price: { type: number }
+              qty: { type: number }
+              fee_usdt: { type: number }
+              slippage_bps: { type: number }
+    CancelRequest:
+      type: object
+      oneOf:
+        - required: [order_id]
+        - required: [client_order_id]
+      properties:
+        order_id: { type: string }
+        client_order_id: { type: string }
+        cascade_oco: { type: boolean, default: true }
+        reason: { type: string }
+    CancelResponse:
+      type: object
+      properties:
+        result: { type: string, enum: [CANCELLED, NOT_FOUND, FAILED] }
+        order_id: { type: string }
+        message: { type: string }
+
+    ReconcileRequest:
+      type: object
+      properties:
+        mode: { type: string, enum: [ALL, ORDERS, POSITIONS], default: ALL }
+        dry_run: { type: boolean, default: false }
+        orphan_policy: { type: string, enum: [RECLAIM_IF_SAFE, CONSERVATIVE], default: CONSERVATIVE }
+        time_window_h: { type: integer, minimum: 1, maximum: 168, default: 72 }
+      required: [mode]
+    ReconcileResponse:
+      type: object
+      properties:
+        summary:
+          type: object
+          properties:
+            checked_orders: { type: integer }
+            checked_positions: { type: integer }
+            adopted: { type: integer }
+            closed: { type: integer }
+            fixed: { type: integer }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: [ORPHAN_ORDER, ORPHAN_POS] }
+              action: { type: string, enum: [ADOPTED, CLOSED, FIXED] }
+              ref: { type: string }
+
+    FeatureRecomputeRequest:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items: { type: string }
+          minItems: 1
+        windows:
+          type: array
+          items: { type: string, enum: [1m,5m,1h,4h,1d] }
+          minItems: 1
+        force: { type: boolean, default: false }
+      required: [symbols, windows]
+    FeatureRecomputeResponse:
+      type: object
+      properties:
+        job_id: { type: string }
+        accepted: { type: boolean }
+
+    DecideRequest:
+      type: object
+      properties:
+        signal_id: { type: string }
+        symbol: { type: string }
+        config_rev:
+          oneOf:
+            - type: string
+              enum: [CURRENT]
+            - type: integer
+        dry_run: { type: boolean, default: true }
+      required: [symbol]
+    DecideResponse:
+      type: object
+      properties:
+        decision:
+          type: object
+          properties:
+            action: { type: string, enum: [open, skip] }
+            size_mult: { type: number }
+            tp_mult: { type: number }
+            sl_mult: { type: number }
+            reason: { type: string }
+        intent: { $ref: "#/components/schemas/Intent" }
+
+    PositionsManageRequest:
+      type: object
+      properties:
+        symbols:
+          type: array
+          items: { type: string }
+          minItems: 1
+        actions:
+          type: array
+          items: { type: string, enum: [TRAIL_SL, PARTIAL_TP, ADD_IF_OK] }
+          minItems: 1
+        dry_run: { type: boolean, default: false }
+      required: [symbols, actions]
+    PositionsManageResponse:
+      type: object
+      properties:
+        managed: { type: array, items: { type: object } }
+        errors: { type: array, items: { type: string } }
+
+    LabelsBackfillRequest:
+      type: object
+      properties:
+        horizon_h: { type: integer, enum: [12,24,36], default: 24 }
+        from_ts: { type: integer }
+        to_ts: { type: integer }
+      required: [horizon_h]
+    LabelsBackfillResponse:
+      type: object
+      properties:
+        updated: { type: integer }
+        errors: { type: array, items: { type: string } }
+
+    AutopsyRequest:
+      type: object
+      properties:
+        force_rebuild: { type: boolean, default: false }
+    AutopsyResponse:
+      type: object
+      properties:
+        trade_id: { type: string }
+        report_id: { type: string }
+        url: { type: string }
+
+    ExperimentsRunRequest:
+      type: object
+      properties:
+        hypothesis_id: { type: string }
+        design:
+          type: object
+          properties:
+            window: { type: object, properties: { from: { type: string, format: date-time }, to: { type: string, format: date-time } }, required: [from, to] }
+            metrics: { type: array, items: { type: string } }
+      oneOf:
+        - required: [hypothesis_id]
+        - required: [design]
+    ExperimentsRunResponse:
+      type: object
+      properties:
+        exp_id: { type: string }
+        status: { type: string, enum: [QUEUED, RUNNING, DONE, FAILED] }
+
+    BundleUpsertRequest:
+      type: object
+      properties:
+        bundle_id: { type: string }
+        rev: { type: integer }
+        factors: { type: array, items: { type: string }, minItems: 1 }
+        rules: { type: array, items: { type: string }, minItems: 1 }
+        instruments: { type: array, items: { type: string }, minItems: 1 }
+        flags: { type: object, additionalProperties: true }
+        status: { type: string, enum: [DRAFT] }
+      required: [bundle_id, rev, factors, rules, instruments, status]
+    BundleUpsertResponse:
+      type: object
+      properties:
+        bundle_id: { type: string }
+        rev: { type: integer }
+        status: { type: string }
+        lint:
+          type: object
+          properties:
+            passed: { type: boolean }
+            errors: { type: array, items: { type: string } }
+
+    SimulateRequest:
+      type: object
+      properties:
+        bundle_id: { type: string }
+        active_rev_ref:
+          type: string
+          enum: [CURRENT]
+          default: CURRENT
+        window:
+          type: object
+          properties:
+            from: { type: string, format: date-time }
+            to: { type: string, format: date-time }
+          required: [from, to]
+        symbols:
+          type: array
+          items: { type: string }
+        horizons:
+          type: array
+          items: { type: string, enum: ["12h","24h","36h"] }
+        sensitivity:
+          type: object
+          properties:
+            enabled: { type: boolean, default: true }
+            topk: { type: integer, minimum: 1, maximum: 10, default: 3 }
+            epsilon: { type: number, exclusiveMinimum: 0, maximum: 0.2, default: 0.05 }
+            n_eval: { type: integer, minimum: 10, maximum: 5000, default: 500 }
+      required: [bundle_id, window]
+    SimulateResponse:
+      type: object
+      properties:
+        sim_id: { type: string }
+        summary: { type: object }
+        approx_effect: { type: object }
+        sensitivity_analysis: { type: object }
+        bounds_guard: { type: object }
+        status: { type: string, enum: [QUEUED, RUNNING, DONE, FAILED] }
+
+    PromoteRequest:
+      type: object
+      properties:
+        bundle_id: { type: string }
+        to_rev: { type: integer }
+        mode: { type: string, enum: [CANARY, RAMP, FULL, ROLLBACK] }
+        traffic_pct: { type: integer, minimum: 1, maximum: 50 }
+        duration_h: { type: integer, minimum: 24, maximum: 336 }
+      required: [bundle_id, to_rev, mode]
+    PromoteResponse:
+      type: object
+      properties:
+        promotion_id: { type: string }
+        status: { type: string, enum: [PENDING, ACTIVE, ROLLED_BACK, ABORTED, DONE] }
+        guardrail: { type: object }
+
+    MetricsResponse:
+      type: object
+      properties:
+        series:
+          type: array
+          items:
+            type: object
+            properties:
+              ts: { type: integer }
+              value: { type: number }
+              labels: { type: object, additionalProperties: true }
+
+    AlertsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              alert_id: { type: string }
+              severity: { type: string, enum: [INFO, WARN, ERROR, FATAL] }
+              source: { type: string }
+              message: { type: string }
+              ts: { type: integer }

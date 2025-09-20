@@ -1,0 +1,10 @@
+redis:
+  addr: "localhost:6379"
+  password: ""
+  poolSize: 10
+
+arangodb:
+  addr: "http://localhost:8529"
+  database: "_system"
+  username: "root"
+  password: ""
