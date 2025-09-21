@@ -2,195 +2,210 @@
 
 ## 概述
 
-S9 Hypothesis Orchestrator 是 Project Chimera 交易系統的假設測試編排器，負責執行交易策略的假設測試、回測和實驗，驗證策略的有效性。
+S9 Hypothesis Orchestrator 負責假設與實驗管理，包括假設生成、回測/實驗執行（Walk-Forward、Purged K-Fold）等功能。
 
-## 功能
+## 功能描述
 
-- **假設測試**：執行交易策略假設測試
-- **回測分析**：進行歷史數據回測
-- **實驗管理**：管理實驗配置和執行
-- **結果分析**：分析實驗結果和統計
-- **模型驗證**：驗證機器學習模型
+- **假設管理**：管理和驗證交易假設
+- **回測執行**：執行 Walk-Forward 和 Purged K-Fold 回測
+- **實驗管理**：管理實驗流程和結果
+- **模型訓練**：離線訓練和驗證模型
+- **統計檢定**：執行統計檢定和 FDR 控制
 
-## API 接口
+## 實作進度
 
-### 健康檢查
+**實作進度：基礎架構完成，核心功能未實作 (15%)**
 
-- `GET /health` - 服務健康狀態檢查
-- `GET /ready` - 服務就緒狀態檢查
+### ✅ 已完成功能
+- [x] 基礎服務架構
+- [x] 健康檢查端點 (`/health`, `/ready`)
+- [x] API 框架基礎
 
-### 實驗管理
+### ⚠️ 待實作功能
 
-- `POST /experiments/run` - 執行實驗
+#### 1. 假設與實驗（研究）
+- [ ] **Walk-Forward 回測**
+  - [ ] 滾動窗訓練→前推驗證
+  - [ ] 滾動窗口管理
+  - [ ] 前推驗證邏輯
+- [ ] **Purged K-Fold 回測**
+  - [ ] 避免資訊洩漏
+  - [ ] K-Fold 分割邏輯
+  - [ ] 資訊洩漏檢測
+- [ ] **統計檢定**
+  - [ ] p-value 計算
+  - [ ] FDR 控制
+  - [ ] 統計顯著性檢定
 
-#### Run Experiment
+#### 2. 模型管理
+- [ ] **離線訓練**
+  - [ ] 監督式模型訓練（Logistic/XGBoost）
+  - [ ] 模型驗證和選擇
+  - [ ] 模型版本管理
+- [ ] **線上推論**
+  - [ ] 模型熱載
+  - [ ] 推論服務
+  - [ ] 模型性能監控
+- [ ] **定時任務**
+  - [ ] 每週/每月批次訓練
+  - [ ] 模型重訓觸發
+  - [ ] AUC/Brier 劣化檢測
 
-**請求**：
-```json
-{
-  "experiment_id": "exp_001",
-  "hypothesis": {
-    "name": "momentum_strategy",
-    "description": "Test momentum strategy effectiveness",
-    "parameters": {
-      "lookback_period": 20,
-      "threshold": 0.02,
-      "position_size": 0.1
-    }
-  },
-  "data_range": {
-    "from_time": 1640995200000,
-    "to_time": 1641081600000,
-    "symbols": ["BTCUSDT", "ETHUSDT"]
-  },
-  "validation_method": "WALK_FORWARD",
-  "metrics": ["sharpe_ratio", "max_drawdown", "win_rate"]
-}
-```
+#### 3. API 接口
+- [ ] **實驗管理 API**
+  - [ ] POST /experiments/run 執行實驗
+  - [ ] GET /experiments/{id} 查詢實驗結果
+  - [ ] GET /experiments/history 查詢實驗歷史
+- [ ] **假設管理 API**
+  - [ ] POST /hypotheses/create 創建假設
+  - [ ] GET /hypotheses/{id} 查詢假設
+  - [ ] PUT /hypotheses/{id} 更新假設
+- [ ] **模型管理 API**
+  - [ ] POST /models/train 訓練模型
+  - [ ] GET /models/{id} 查詢模型
+  - [ ] POST /models/deploy 部署模型
 
-**回應**：
-```json
-{
-  "experiment_id": "exp_001",
-  "status": "COMPLETED",
-  "results": {
-    "overall_performance": {
-      "total_return": 0.15,
-      "sharpe_ratio": 1.85,
-      "max_drawdown": 0.08,
-      "win_rate": 0.68,
-      "profit_factor": 2.1
-    },
-    "fold_results": [
-      {
-        "fold": 1,
-        "train_period": "2022-01-01 to 2022-01-15",
-        "test_period": "2022-01-16 to 2022-01-31",
-        "performance": {
-          "return": 0.05,
-          "sharpe_ratio": 1.2,
-          "max_drawdown": 0.03
-        }
-      }
-    ],
-    "statistical_significance": 0.95,
-    "confidence_interval": [0.12, 0.18]
-  },
-  "recommendations": [
-    "Strategy shows consistent positive performance",
-    "Consider reducing position size during high volatility periods",
-    "Monitor correlation with market indices"
-  ]
-}
-```
+#### 4. 數據處理
+- [ ] **數據讀取**
+  - [ ] 從 ArangoDB 讀取歷史數據
+  - [ ] 數據預處理和清洗
+  - [ ] 特徵工程
+- [ ] **數據寫入**
+  - [ ] 實驗結果寫入 ArangoDB
+  - [ ] 模型元數據存儲
+  - [ ] 數據一致性保證
+- [ ] **數據分析**
+  - [ ] 回測結果分析
+  - [ ] 統計分析
+  - [ ] 性能評估
 
-## 服務間交互
+#### 5. 監控和日誌
+- [ ] **監控指標**
+  - [ ] 實驗執行成功率
+  - [ ] 模型訓練性能
+  - [ ] 回測執行時間
+- [ ] **日誌記錄**
+  - [ ] 實驗過程日誌
+  - [ ] 模型訓練日誌
+  - [ ] 錯誤日誌
 
-### 入向（被呼叫）
-- **S12 Web UI** → `POST /experiments/run` - 手動執行實驗
-- **研究團隊** → `POST /experiments/run` - 策略研究實驗
+#### 6. 配置管理
+- [ ] **實驗參數配置**
+  - [ ] 回測參數配置
+  - [ ] 統計檢定參數配置
+  - [ ] 模型參數配置
+- [ ] **定時任務配置**
+  - [ ] 訓練頻率配置
+  - [ ] 實驗觸發條件配置
 
-### 出向（主動呼叫）
-- **數據庫** → 讀取歷史數據和標籤
-- **數據庫** → 存儲實驗結果
-- **S12 Web UI** → 通知實驗完成
+#### 6. 核心時序圖相關功能（基於時序圖實作）
+- [ ] **實驗觸發**
+  - [ ] 監聽 `ops:events` 事件
+  - [ ] 觸發實驗執行流程
+  - [ ] 執行 Walk-Forward 和 Purged K-Fold 回測
+- [ ] **實驗執行流程**
+  - [ ] 讀取 `hypotheses` 選 PENDING 狀態
+  - [ ] 跑回測引擎（可離線批處理）→ KPI/檢定/FDR
+  - [ ] 寫入 `experiments`（結果）、`hypotheses(status=CONFIRMED|REJECTED)`
+- [ ] **事件發布**
+  - [ ] 發布 `ops:events`（通知/審計）
+  - [ ] 實驗完成通知
 
-## 實驗類型
+#### 7. 定時任務相關功能（基於定時任務實作）
+- [ ] **回測 / 實驗批次（每日 / 每週）**
+  - [ ] CAGR：`CAGR = (1 + R_tot)^(year/days) - 1`
+  - [ ] 最大回撤：`MaxDD = max_t(1 - Equity_t / max_{τ≤t} Equity_τ)`
+  - [ ] Calmar：`Calmar = CAGR / |MaxDD|`
+  - [ ] 其他：Sharpe、Sortino、Profit Factor、Hit Ratio、平均持倉時間等
+  - [ ] 統計檢定：差異顯著性：U-test／bootstrap CI；以 FDR 控制 α
 
-### 回測實驗
-- 歷史數據回測
-- 策略參數優化
-- 風險評估
+#### 8. 目標與範圍相關功能（基於目標與範圍實作）
+- [ ] **前置依賴實作**
+  - [ ] ArangoDB Collections：`experiments`、`hypotheses(status)`
+  - [ ] Redis Keys：`bt:{last_run_ts}`
 
-### 假設測試
-- 統計假設檢驗
-- A/B 測試
-- 對照組比較
+#### 9. 路過的服務相關功能（基於路過的服務實作）
+- [ ] **POST /experiments/run**
+  - [ ] 讀：`hypotheses` 選 PENDING；配置樣本窗口/Walk-Forward
+  - [ ] 跑：回測引擎（可離線批）→ KPI/檢定/FDR
+  - [ ] 寫 DB：`experiments`（結果）、`hypotheses(status=CONFIRMED|REJECTED)`
+  - [ ] 發：`ops:events` 通知/審計
 
-### 交叉驗證
-- K-Fold 交叉驗證
-- Walk-Forward 驗證
-- 時間序列驗證
+#### 8. Integration 附錄相關功能（基於 Integration 附錄實作）
+- [ ] **實驗執行流程**
+  - [ ] 實驗選擇：讀取 `hypotheses` 選 PENDING 狀態的假設
+  - [ ] 回測執行：跑回測引擎（可離線批處理）→ KPI/檢定/FDR
+  - [ ] 結果記錄：寫入 `experiments`（結果）、`hypotheses(status=CONFIRMED|REJECTED)`
+  - [ ] 事件發布：發布 `ops:events`（通知/審計）
+- [ ] **事務一致性保證**
+  - [ ] 冪等性保證：使用 `experiment_id` 作為冪等鍵
+  - [ ] 狀態機管理：實驗狀態 PENDING → RUNNING → COMPLETED
+  - [ ] 失敗恢復：系統崩潰後能夠重新執行實驗
+- [ ] **性能優化**
+  - [ ] 並行處理：多個實驗並行執行
+  - [ ] 批量處理：批量處理實驗任務
+  - [ ] 緩存機制：實驗結果緩存避免重複計算
 
-## 驗證方法
+#### 9. Hop-by-Hop 執行規格相關功能（基於 Hop-by-Hop 執行規格補遺實作）
+- [ ] **POST /experiments/run**
+  - [ ] 讀：`hypotheses` 選 PENDING；配置樣本窗口/Walk-Forward
+  - [ ] 跑：回測引擎（可離線批）→ KPI/檢定/FDR
+  - [ ] 寫 DB：`experiments`（結果）、`hypotheses(status=CONFIRMED|REJECTED)`
+  - [ ] 發：`ops:events`（通知/審計）
 
-### Walk-Forward 驗證
-- 滾動窗口訓練
-- 前向測試
-- 時間序列特性保持
+#### 10. 功能規格書相關功能（基於功能規格書實作）
+- [ ] **入向（被呼叫）API**
+  - [ ] `GET /health`（所有服務）→ `HealthResponse{Status,Checks,...}`
+  - [ ] `POST /experiments/run`（S12/研究）→ `ExperimentRunResponse`
+- [ ] **出向（主以事件）**
+  - [ ] 寫 experiments 結果；可通知 S12/S10
+- [ ] **假設實驗/回測**
+  - [ ] S12/研究 → S9 `POST /experiments/run`（`ExperimentRunRequest`）→ `ExperimentRunResponse`
+  - [ ] S9 主要讀 DB/檔湖，不需叫 S3
+  - [ ] 失敗補償：失敗者記號重試佇列；連續 3 次失敗→alerts(ERROR)
 
-### K-Fold 交叉驗證
-- 數據分割驗證
-- 統計穩健性
-- 過擬合檢測
+### 🎯 實作優先順序
+1. **高優先級**：Walk-Forward 和 Purged K-Fold 回測
+2. **中優先級**：模型訓練和統計檢定
+3. **低優先級**：配置管理和優化
+4. **低優先級**：Integration 附錄相關功能優化
 
-### 時間序列驗證
-- 時間依賴性保持
-- 未來數據洩露防護
-- 真實交易模擬
+## 技術規格
 
-## 性能指標
+### 環境要求
+- Go 1.19+
+- ArangoDB
+- Redis Cluster
+- Python (用於 ML 模型)
 
-### 收益指標
-- 總收益率
-- 年化收益率
-- 風險調整收益
+### 開發指南
 
-### 風險指標
-- 最大回撤
-- 波動率
-- VaR 和 CVaR
-
-### 統計指標
-- Sharpe 比率
-- Sortino 比率
-- Calmar 比率
-
-### 交易指標
-- 勝率
-- 盈虧比
-- 交易頻率
-
-## 實驗管理
-
-### 實驗配置
-- 參數範圍設定
-- 數據範圍選擇
-- 指標配置
-
-### 執行控制
-- 並行執行
-- 資源限制
-- 優先級管理
-
-### 結果存儲
-- 結構化存儲
-- 版本控制
-- 結果比較
-
-## 配置
-
-服務使用以下配置：
-- Redis：用於任務佇列和緩存
-- ArangoDB：用於實驗數據存儲
-- 計算資源配置
-- 端口：8089（可通過環境變量 PORT 覆蓋）
-
-## 部署
-
+#### 本地開發
 ```bash
-# 構建
-go build -o s9-hypothesis .
+# 安裝依賴
+go mod tidy
 
-# 運行
-./s9-hypothesis
+# 運行服務
+go run main.go
+
+# 測試
+go test ./...
 ```
 
-## 監控
+## 故障排除
 
-服務提供以下監控指標：
-- 實驗執行時間
-- 實驗成功率
-- 計算資源使用率
-- 結果準確性
-- 統計顯著性
+### 常見問題
+1. **實驗執行失敗**
+   - 檢查數據完整性
+   - 確認實驗參數正確
+   - 查看日誌中的錯誤信息
+
+2. **模型訓練失敗**
+   - 檢查數據質量
+   - 確認模型參數
+   - 查看訓練日誌
+
+## 版本歷史
+
+### v1.0.0
+- 初始版本

@@ -114,14 +114,14 @@ type HealthCheck struct {
 
 // HealthResponse 各服務 GET /health 的統一回傳
 type HealthResponse struct {
-	Service    string        `json:"service"`                // 服務代號：s1-exchange / s2-feature ...
-	Version    string        `json:"version"`                // 服務版本（git tag/commit）
-	Status     HealthStatus  `json:"status"`                 // 匯總狀態：OK/DEGRADED/ERROR
-	Ts         int64         `json:"ts"`                     // 回應時間 epoch ms
-	UptimeMs   int64         `json:"uptime_ms"`              // 服務啟動至今毫秒數
-	ConfigRev  int           `json:"config_rev,omitempty"`   // 當前策略配置版本（能取得者回報）
-	Checks     []HealthCheck `json:"checks,omitempty"`       // 相依檢查明細
-	Notes      string        `json:"notes,omitempty"`        // 補充說明
+	Service   string        `json:"service"`              // 服務代號：s1-exchange / s2-feature ...
+	Version   string        `json:"version"`              // 服務版本（git tag/commit）
+	Status    HealthStatus  `json:"status"`               // 匯總狀態：OK/DEGRADED/ERROR
+	Ts        int64         `json:"ts"`                   // 回應時間 epoch ms
+	UptimeMs  int64         `json:"uptime_ms"`            // 服務啟動至今毫秒數
+	ConfigRev int           `json:"config_rev,omitempty"` // 當前策略配置版本（能取得者回報）
+	Checks    []HealthCheck `json:"checks,omitempty"`     // 相依檢查明細
+	Notes     string        `json:"notes,omitempty"`      // 補充說明
 }
 
 // ================================
@@ -166,3 +166,67 @@ type Alert struct {
 // 路徑：GET /health
 // ================================
 // 使用 HealthResponse（見上）
+
+// TODO: S1 Exchange Connectors 待實作項目
+// ================================
+// 1. WebSocket 連接管理
+//    - [ ] 實現 Binance WebSocket 連接和重連機制
+//    - [ ] 實現市場數據訂閱 (ticker, depth, trades)
+//    - [ ] 實現連接狀態監控和健康檢查
+//    - [ ] 實現消息緩衝和錯誤處理
+//
+// 2. 市場數據處理
+//    - [ ] 實現 ticker 數據解析和標準化
+//    - [ ] 實現 orderbook 數據解析和標準化
+//    - [ ] 實現 trades 數據解析和標準化
+//    - [ ] 實現數據驗證和過濾
+//
+// 3. Redis Stream 發布
+//    - [ ] 實現 mkt:tick:{symbol} Stream 發布
+//    - [ ] 實現 mkt:depth:{symbol} Stream 發布
+//    - [ ] 實現 mkt:trades:{symbol} Stream 發布
+//    - [ ] 實現 Stream 配置和錯誤處理
+//
+// 4. ArangoDB 數據寫入
+//    - [ ] 實現 market_data collection 寫入
+//    - [ ] 實現 orderbook collection 寫入
+//    - [ ] 實現 funding_rate collection 寫入
+//    - [ ] 實現 account_balance collection 寫入
+//    - [ ] 實現 positions collection 寫入
+//
+// 5. 定時任務
+//    - [ ] 實現 exchange_info 定時刷新
+//    - [ ] 實現 funding_rate 定時刷新
+//    - [ ] 實現 account_balance 定時刷新
+//    - [ ] 實現 positions 定時刷新
+//
+// 6. Treasury 資金劃轉
+//    - [ ] 實現 Binance API 資金劃轉
+//    - [ ] 實現冪等性檢查
+//    - [ ] 實現重試機制
+//    - [ ] 實現劃轉日誌記錄
+//
+// 7. 健康檢查
+//    - [ ] 實現 Redis 連接檢查
+//    - [ ] 實現 ArangoDB 連接檢查
+//    - [ ] 實現 WebSocket 連接檢查
+//    - [ ] 實現 Binance API 連接檢查
+//
+// 8. 指標收集
+//    - [ ] 實現 WebSocket 連接數指標
+//    - [ ] 實現數據處理延遲指標
+//    - [ ] 實現錯誤率指標
+//    - [ ] 實現內存使用指標
+//
+// 9. 告警機制
+//    - [ ] 實現 WebSocket 斷線告警
+//    - [ ] 實現數據延遲告警
+//    - [ ] 實現 API 錯誤率告警
+//    - [ ] 實現內存洩漏告警
+//
+// 10. 配置管理
+//     - [ ] 實現環境變數配置
+//     - [ ] 實現 WebSocket 配置
+//     - [ ] 實現 Redis 配置
+//     - [ ] 實現 ArangoDB 配置
+//     - [ ] 實現 Binance API 配置
