@@ -2,7 +2,9 @@
 
 ## 概述
 
-Project Chimera 是一個基於微服務架構的高頻交易系統，由 12 個獨立的微服務組成，每個服務負責特定的功能領域，通過 HTTP API 和 Redis Streams 進行通信。
+**Project Chimera** 是一個生產等級的量化交易系統，支援 **Binance Futures + Spot**。  
+系統以 **USDT 單位記帳**，支援多幣種策略，具備熱更新、風控、回測與完整可觀測性。
+
 
 ## 系統架構
 
@@ -88,67 +90,148 @@ graph TB
     S8 --> MINIO
 ```
 
+---
+
 ## 服務詳細說明
+
+系統由 **12 個微服務 (S1–S12)** 組成：
 
 ### 1. S1 Exchange Connectors (8081)
 - **功能**：交易所連接器，與幣安等交易所交互
 - **主要 API**：`POST /xchg/treasury/transfer`
 - **職責**：行情數據、訂單執行、資金劃轉
+    - Binance Futures/Spot WS & REST  
+    - Treasury transfer API  
+    - 不包含決策邏輯
 
 ### 2. S2 Feature Generator (8082)
 - **功能**：特徵計算引擎
 - **主要 API**：`POST /features/recompute`
 - **職責**：從市場數據生成特徵，為策略提供輸入
+    - 因子計算：ATR、RV、rho、regime、depth、spread、funding  
+    - 選配：艾略特波浪因子  
+    - 寫入 `signals.features` + Redis 快取
 
 ### 3. S3 Strategy Engine (8083)
 - **功能**：策略決策引擎
 - **主要 API**：`POST /decide`
 - **職責**：基於特徵生成交易決策和訂單意圖
+    - DSL 規則引擎  
+    - L0 guards → Rules DSL → ML confidence → Intents
 
 ### 4. S4 Order Router (8084)
 - **功能**：訂單路由引擎
 - **主要 API**：`POST /orders`, `POST /cancel`
 - **職責**：執行訂單、管理訂單生命周期
+    - Idempotent execution  
+    - Maker→Taker fallback、TWAP  
+    - SPOT OCO、Guardian Stops
 
 ### 5. S5 Reconciler (8085)
 - **功能**：對帳引擎
 - **主要 API**：`POST /reconcile`
 - **職責**：數據一致性檢查、孤兒處理
+    - 狀態機 + 孤兒訂單處理
 
 ### 6. S6 Position Manager (8086)
 - **功能**：持倉管理引擎
 - **主要 API**：`POST /positions/manage`, `POST /auto-transfer/trigger`
 - **職責**：持倉監控、移動停損、自動劃轉
+    - Trailing Stop、Staged TP  
+    - Wallet Auto-transfer（需審批）
 
 ### 7. S7 Label Backfill (8087)
 - **功能**：標籤回填服務
 - **主要 API**：`POST /labels/backfill`
 - **職責**：為歷史信號添加標籤
+    - 12h / 24h / 36h ROI labels
 
 ### 8. S8 Autopsy Generator (8088)
 - **功能**：交易復盤生成器
 - **主要 API**：`POST /autopsy/{trade_id}`
 - **職責**：生成交易復盤報告
+    - TL;DR 敘事  
+    - ROE 曲線、TCA/microstructure  
+    - 同業比較、反事實分析
 
 ### 9. S9 Hypothesis Orchestrator (8089)
 - **功能**：假設測試編排器
 - **主要 API**：`POST /experiments/run`
 - **職責**：執行策略假設測試和回測
+    - Workflow backtests / 實驗  
+    - Consistency checks
 
 ### 10. S10 Config Service (8090)
 - **功能**：配置管理服務
 - **主要 API**：`POST /bundles`, `POST /simulate`, `POST /promote`, `GET /active`
 - **職責**：策略配置管理、推廣、模擬
+    - Bundles (factors/rules/instruments)  
+    - Lint + Dry-run + Simulator + Sensitivity  
+    - Canary → Ramp → Rollback  
+    - cfg:events → Zero-downtime Hot Reload
 
 ### 11. S11 Metrics & Health (8091)
 - **功能**：指標彙整和健康監控
 - **主要 API**：`GET /metrics`, `GET /alerts`
 - **職責**：系統指標收集、告警管理
+    - 聚合健康狀態：GREEN / YELLOW / ORANGE / RED  
+    - Failure detection matrices  
+    - SLI/SLO 指標
 
 ### 12. S12 Web UI / API Gateway (8092)
 - **功能**：Web 界面和 API 網關
 - **主要 API**：`POST /kill-switch`, `POST /treasury/transfer`
 - **職責**：用戶界面、系統控制、資金劃轉
+    - RBAC、審批、Kill-switch  
+    - Proxy 全服務
+
+
+---
+
+
+## 數據儲存
+- **ArangoDB** (Primary DB)  
+  - collections: signals, orders, fills, positions_snapshots, funding_records, strategy_events, config_bundles, …  
+- **Redis Cluster** (Cache & Streams)  
+  - Stream families: `cfg:events`, `mkt:*`, `feat:events:*`, `ord:cmd/*`, `ord:result/*`, `pos:events`, `metrics:*`, `health:*`, …  
+  - Keys: risk_budget, concurrency, kill_switch, treasury_idempotency  
+- **MinIO** (Artifacts/Reports)
+
+---
+
+## 治理與風控
+- **DSL 白名單**：operators/actions/ranges  
+- **Lint & Dry-run**：skip_entry, size_mult > 1, Jaccard policy shift  
+- **Promote Guardrails**：delta_trades, override rate, robustness score  
+- **Staged rollout**：Canary → Ramp → Auto-rollback  
+- **Risk Management**：ATR/ROE、budget、concurrency gates
+
+---
+
+## 可觀測性
+- **kube-prometheus-stack**  
+- 指標：Order success rate、End-to-end p95、WS lag、Reconciliation Jaccard、MaxDD  
+- Alerts：INFO / WARN / ERROR / FATAL
+
+---
+
+## 特色功能
+- 配置模擬器 + 敏感度分析 (flip_pct, Lipschitz)  
+- 停滯交易觸發器 (Stagnation Trade Trigger)  
+- 填單即時微結構快照  
+- 回測/實盤 TCA 一致性檢查  
+- 同業比較與 Peer Group Benchmarking  
+
+---
+
+## 偏好
+- 純 **USDT** 記帳  
+- 支援 **Binance PERP 20× isolated (default 20 USDT margin)**  
+- **Redis Cluster only**（不使用其他 MQ）  
+- **Zero-downtime 熱更新 (RCU)**  
+- **純 Markdown 文件輸出**
+
+---
 
 ## 數據流
 
@@ -299,3 +382,66 @@ S12 (配置管理) → S10 (配置服務) → Redis Stream → 各服務
 - **備份策略**：多層備份策略
 - **恢復流程**：災難恢復流程
 - **數據同步**：跨區域數據同步
+
+---
+
+## 系統架構圖（文字版）
+
+```text
+              +---------------------+
+              |   Binance Exchange  |
+              |  (Futures + Spot)   |
+              +----------+----------+
+                         |
+                         v
+                +--------+--------+
+                |  S1 Exchange    |
+                |  Connectors     |
+                +--------+--------+
+                         |
+                         v
+                +--------+--------+
+                |  S2 Feature     |
+                |  Generator      |
+                +--------+--------+
+                         |
+                         v
+                +--------+--------+
+                |  S3 Strategy    |
+                |  Engine         |
+                +--------+--------+
+                         |
+                         v
+                +--------+--------+
+                |  S4 Order       |
+                |  Router         |
+                +--------+--------+
+                         |
+                         v
+        +----------------+----------------+
+        |                                 |
+   +----+----+                      +-----+-----+
+   |  S5     |                      |  S6       |
+   |Reconciler|                      |Position   |
+   |          |                      |Manager    |
+   +----------+                      +-----------+
+
+   +------------------+      +------------------+
+   |   ArangoDB       |      |   Redis Cluster  |
+   | (Collections)    |<---->| (Streams/Keys)   |
+   +------------------+      +------------------+
+
+   +--------------------------------------------+
+   |                  MinIO                     |
+   |           (Artifacts/Reports)              |
+   +--------------------------------------------+
+
+   +------------------+     +------------------+     +------------------+
+   |   S7 Label       |     |   S8 Autopsy     |     |   S9 Hypothesis  |
+   |   Backfill       |     |   Generator      |     |   Orchestrator   |
+   +------------------+     +------------------+     +------------------+
+
+   +------------------+     +------------------+     +------------------+
+   |   S10 Config     |     |   S11 Metrics &  |     |   S12 Web UI &   |
+   |   Service        |     |   Health         |     |   API Gateway    |
+   +------------------+     +------------------+     +------------------+
